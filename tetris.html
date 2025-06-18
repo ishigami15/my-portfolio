@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>テトリスゲーム</title>
+  <style>
+    body { font-family: Arial; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; position: relative; }
+    #tetris { border: 1px solid black; }
+    .row { display: flex; }
+    .cell { width: 20px; height: 20px; border: 0.5px solid #ccc; }
+  </style>
+</head>
+<body>
+  <div id="tetris"></div>
+
+  <audio id="bgm" src="bgm.mp3" loop></audio>
+  <audio id="success-sound" src="success.mp3"></audio>
+
+  <script>
+    const grid = [];
+    const gridHeight = 20;
+    const gridWidth = 10;
+    let currentPiece = null;
+    let intervalId = null;
+    let isWaiting = true;
+    let lineClearedCount = 0;
+    let gameOver = false;
+    let restartPending = false;
+    let startMsg = null;
+
+    const bgm = document.getElementById('bgm');
+    const successSound = document.getElementById('success-sound');
+
+    class Piece {
+      constructor(shape, color) {
+        this.shape = shape;
+        this.color = color;
+        this.x = Math.floor(gridWidth / 2) - 1;
+        this.y = 0;
+      }
+      draw() {
+        this.shape.forEach((row, dy) => {
+          row.forEach((cell, dx) => {
+            if (cell) {
+              const x = this.x + dx;
+              const y = this.y + dy;
+              if (y >= 0 && y < gridHeight && x >= 0 && x < gridWidth) {
+                grid[y][x].style.backgroundColor = this.color;
+              }
+            }
+          });
+        });
+      }
+      erase() {
+        this.shape.forEach((row, dy) => {
+          row.forEach((cell, dx) => {
+            if (cell) {
+              const x = this.x + dx;
+              const y = this.y + dy;
+              if (y >= 0 && y < gridHeight && x >= 0 && x < gridWidth) {
+                grid[y][x].style.backgroundColor = '';
+              }
+            }
+          });
+        });
+      }
+      moveDown() {
+        this.erase();
+        this.y++;
+        if (!this.isValidPosition()) {
+          this.y--;
+          this.draw();
+          checkCompleteRows();
+          if (!gameOver) addPiece();
+          return;
+        }
+        this.draw();
+      }
+      move(dx) {
+        this.erase();
+        this.x += dx;
+        if (!this.isValidPosition()) {
+          this.x -= dx;
+        }
+        this.draw();
+      }
+      rotate(direction) {
+        this.erase();
+        let newShape = [];
+        for (let x = 0; x < this.shape[0].length; x++) {
+          newShape.push(this.shape.map(row => row[x]));
+        }
+        if (direction === 'left') {
+          this.shape = newShape.map(row => row.reverse());
+        } else {
+          this.shape = newShape.reverse();
+        }
+        if (!this.isValidPosition()) {
+          if (direction === 'left') this.rotate('right');
+          else this.rotate('left');
+        }
+        this.draw();
+      }
+      isValidPosition() {
+        return this.shape.every((row, dy) => {
+          return row.every((cell, dx) => {
+            if (!cell) return true;
+            const x = this.x + dx;
+            const y = this.y + dy;
+            return x >= 0 && x < gridWidth && y < gridHeight && (!grid[y] || !grid[y][x].style.backgroundColor);
+          });
+        });
+      }
+    }
+
+    const pieces = [
+      { shape: [[1, 1, 1, 1]], color: 'cyan' },
+      { shape: [[1, 1], [1, 1]], color: 'yellow' },
+      { shape: [[0, 1, 0], [1, 1, 1]], color: 'purple' },
+      { shape: [[0, 1, 1], [1, 1, 0]], color: 'green' },
+      { shape: [[1, 1, 0], [0, 1, 1]], color: 'red' },
+      { shape: [[1, 0, 0], [1, 1, 1]], color: 'blue' },
+      { shape: [[0, 0, 1], [1, 1, 1]], color: 'orange' }
+    ];
+
+    function initGrid() {
+      grid.length = 0;
+      const tetrisContainer = document.getElementById('tetris');
+      tetrisContainer.innerHTML = '';
+      for (let y = 0; y < gridHeight; y++) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const rowArray = [];
+        for (let x = 0; x < gridWidth; x++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          row.appendChild(cell);
+          rowArray.push(cell);
+        }
+        grid.push(rowArray);
+        tetrisContainer.appendChild(row);
+      }
+      addPiece();
+    }
+
+    function addPiece() {
+      if (gameOver) return;
+      clearInterval(intervalId);
+      isWaiting = true;
+      const piece = pieces[Math.floor(Math.random() * pieces.length)];
+      currentPiece = new Piece(piece.shape, piece.color);
+      if (!currentPiece.isValidPosition()) {
+        endGame('GAME OVER');
+        return;
+      }
+      currentPiece.draw();
+      setTimeout(() => {
+        isWaiting = false;
+        intervalId = setInterval(() => {
+          if (currentPiece) currentPiece.moveDown();
+        }, 714);
+      }, 3000);
+    }
+
+    function checkCompleteRows() {
+      let cleared = 0;
+      for (let y = gridHeight - 1; y >= 0; y--) {
+        if (grid[y].every(cell => cell.style.backgroundColor !== '')) {
+          for (let row = y; row > 0; row--) {
+            for (let x = 0; x < gridWidth; x++) {
+              grid[row][x].style.backgroundColor = grid[row - 1][x].style.backgroundColor;
+            }
+          }
+          y++;
+          cleared++;
+        }
+      }
+      if (cleared > 0) {
+        lineClearedCount += cleared;
+        if (lineClearedCount >= 3) {
+          endGame('SUCCESS');
+        }
+      }
+    }
+
+    function endGame(message) {
+      gameOver = true;
+      clearInterval(intervalId);
+      currentPiece = null;
+      document.removeEventListener('keydown', handleKeyPress);
+      bgm.pause();
+      bgm.currentTime = 0;
+      if (message === 'SUCCESS') {
+        successSound.pause();
+        successSound.currentTime = 0;
+        successSound.play().catch(err => console.log('Audio error:', err));
+      }
+      displayEndMessage(message);
+    }
+
+    function displayEndMessage(message) {
+      const msg = document.createElement('div');
+      msg.textContent = message + ' - Press Right Arrow to Restart';
+      msg.style.color = message === 'SUCCESS' ? 'green' : 'red';
+      msg.style.fontSize = '24px';
+      msg.style.position = 'absolute';
+      msg.style.top = '50%';
+      msg.style.left = '50%';
+      msg.style.transform = 'translate(-50%, -50%)';
+      msg.id = 'end-message';
+      document.body.appendChild(msg);
+      restartPending = true;
+      document.addEventListener('keydown', restartKeyHandler);
+    }
+
+    function restartKeyHandler(e) {
+      if (e.key === 'ArrowRight') {
+        document.removeEventListener('keydown', restartKeyHandler);
+        resetGame();
+      }
+    }
+
+    function resetGame() {
+      gameOver = false;
+      lineClearedCount = 0;
+      restartPending = false;
+      clearGrid();
+      const oldMsg = document.getElementById('end-message');
+      if (oldMsg) oldMsg.remove();
+      initGrid();
+      document.addEventListener('keydown', handleKeyPress);
+      successSound.pause();
+      successSound.currentTime = 0;
+      bgm.currentTime = 0;
+      bgm.play();
+    }
+
+    function clearGrid() {
+      for (let y = 0; y < gridHeight; y++) {
+        for (let x = 0; x < gridWidth; x++) {
+          if (grid[y] && grid[y][x]) {
+            grid[y][x].style.backgroundColor = '';
+          }
+        }
+      }
+    }
+
+    function handleKeyPress(event) {
+      if (!currentPiece || gameOver) return;
+      if (isWaiting) {
+        if (event.key === 'ArrowLeft') currentPiece.rotate('left');
+        else if (event.key === 'ArrowRight') currentPiece.rotate('right');
+      } else {
+        if (event.key === 'ArrowLeft') currentPiece.move(-1);
+        else if (event.key === 'ArrowRight') currentPiece.move(1);
+      }
+    }
+
+    function displayStartMessage() {
+      startMsg = document.createElement('div');
+      startMsg.textContent = 'Press Right Arrow to Start';
+      startMsg.style.color = 'blue';
+      startMsg.style.fontSize = '24px';
+      startMsg.style.position = 'absolute';
+      startMsg.style.top = '50%';
+      startMsg.style.left = '50%';
+      startMsg.style.transform = 'translate(-50%, -50%)';
+      document.body.appendChild(startMsg);
+
+      const startListener = (event) => {
+        if (event.key === 'ArrowRight') {
+          startMsg.remove();
+          document.removeEventListener('keydown', startListener);
+          bgm.play();
+          resetGame();
+        }
+      };
+      document.addEventListener('keydown', startListener);
+    }
+
+    displayStartMessage();
+  </script>
+</body>
+</html>
