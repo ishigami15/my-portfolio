@@ -2,11 +2,75 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ポートフォリオ</title>
+  <title>テトリスゲーム（足踏み操作対応）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      line-height: 1.6;
+      margin: 20px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .button {
+      display: block;
+      width: fit-content;
+      margin: 20px auto;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+    }
+    .section {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+    h2 {
+      margin-top: 1.2em;
+      color: #222;
+    }
+    pre {
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
 <body>
-  <h1>ようこそ！</h1>
-  <p>これは私のゲーム紹介サイトです。</p>
-  <a href="tetris.html">ゲームをプレイする</a>
+  <h1>足踏みテトリス ゲーム紹介</h1>
+
+  <a href="tetris.html" class="button">▶ ゲームをプレイする</a>
+
+  <div class="section">
+    <h2>☆ 説明書</h2>
+    <pre>
+このゲームはフットコントローラーに設置されている二つのペダルを用いて操作します。
+（PCで直接プレイする場合は左右キーを用いる）
+
+tetris.html というファイルを右クリックし、「プログラムから開く」を選択することで
+Google Chrome等でプレイ可能です。
+    </pre>
+
+    <h2>・操作方法</h2>
+    <pre>
+ゲーム開始：右ペダル  
+テトリミノの回転：ブロック出現から3秒以内に左右ペダル  
+テトリミノの左右移動：ブロック出現から3秒後に左右ペダル  
+ゲームクリア後再チャレンジ：右ペダル  
+ゲームオーバー後再チャレンジ：右ペダル  
+    </pre>
+
+    <h2>・ルール</h2>
+    <pre>
+落ちてくるテトリミノを操作し横一列に並べて消していく  
+合計3列以上消すことに成功したらゲームクリア  
+ブロックが一番上のマスまで積みあがってしまうとゲームオーバー  
+    </pre>
+  </div>
 </body>
 </html>
